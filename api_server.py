@@ -68,3 +68,17 @@ import os
 def serve_frontend():
     return FileResponse(os.path.join(os.path.dirname(__file__), "index.html"))
 
+from notifier import send_telegram_message
+
+@app.get("/test-signal")
+def test_signal():
+    send_telegram_message(
+        ativo="BTC/USDT",
+        tipo="PUT",
+        minuto_entrada="Próxima vela",
+        confluencias=4,
+        probabilidade=78
+    )
+    return {"status": "Mensagem enviada ao Telegram!"}
+
+
