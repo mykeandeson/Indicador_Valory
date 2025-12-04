@@ -60,3 +60,11 @@ def stop_scan():
 
 if __name__ == "__main__":
     uvicorn.run("api_server:app", host="0.0.0.0", port=8000, reload=False)
+
+from fastapi.responses import FileResponse
+import os
+
+@app.get("/")
+def serve_frontend():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "index.html"))
+
