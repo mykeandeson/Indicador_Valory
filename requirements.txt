@@ -1,0 +1,9 @@
+python-socketio[client]
+aiohttp
+fastapi
+uvicorn
+sqlalchemy
+pandas
+numpy
+pydantic
+requests
