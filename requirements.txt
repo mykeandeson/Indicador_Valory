@@ -6,4 +6,6 @@ sqlalchemy
 pandas
 numpy
 pydantic
+flask
 requests
+websocket-client
