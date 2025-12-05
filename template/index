@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Indicador Valory</title>
+
+  <!-- Manifest PWA -->
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#0A0A0A" />
+
+  <!-- Fonte -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: "Inter", Arial, sans-serif;
+      background: #0a0a0a;
+      color: #ffffff;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 500px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #4da3ff;
+      margin-top: 10px;
+    }
+
+    .btn-main {
+      width: 100%;
+      padding: 16px;
+      font-size: 18px;
+      font-weight: bold;
+      border-radius: 12px;
+      border: none;
+      margin-top: 12px;
+      cursor: pointer;
+      background: #2563eb;
+      color: white;
+    }
+
+    .btn-stop {
+      background: #e53935 !important;
+    }
+
+    .signal-card {
+      background: #111827;
+      padding: 18px;
+      border-radius: 16px;
+      margin-top: 18px;
+      border-left: 4px solid #4da3ff;
+      box-shadow: 0 0 10px rgba(0,0,0,0.45);
+    }
+
+    .tag {
+      background: #4da3ff;
+      padding: 4px 10px;
+      color: #000;
+      font-weight: bold;
+      font-size: 14px;
+      border-radius: 6px;
+      display: inline-block;
+      margin-bottom: 6px;
+    }
+
+    .btn-call, .btn-put {
+      width: 100%;
+      padding: 14px;
+      margin-top: 12px;
+      border-radius: 12px;
+      border: none;
+      font-size: 20px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .btn-call {
+      background: #2ecc71;
+      color: #fff;
+    }
+
+    .btn-put {
+      background: #e53935;
+      color: #fff;
+    }
+
+    .loading {
+      text-align: center;
+      margin-top: 30px;
+      color: #4da3ff;
+    }
+  </style>
+
+</head>
+<body>
+
+  <div class="container">
+
+    <h1>Indicador Valory</h1>
+
+    <button class="btn-main" onclick="startScan()">🚀 Iniciar Scanner</button>
+    <button class="btn-main btn-stop" onclick="stopScan()">🛑 Parar Scanner</button>
+
+    <h2 style="color:#4da3ff; margin-top:25px;">Últimos Sinais</h2>
+    <div id="signals"></div>
+
+  </div>
+
+<script>
+const API_BASE = window.location.origin;
+
+// === START / STOP ===
+
+async function startScan() {
+  await fetch(API_BASE + "/start", { method: "POST" });
+  alert("Scanner iniciado!");
+}
+
+async function stopScan() {
+  await fetch(API_BASE + "/stop", { method: "POST" });
+  alert("Scanner parado.");
+}
+
+// === CARREGAR SINAIS ===
+
+async function loadSignals() {
+  const box = document.getElementById("signals");
+
+  try {
+    const r = await fetch(API_BASE + "/signals/current");
+    const data = await r.json();
+
+    if (!data || data.length === 0) {
+      box.innerHTML = "<p class='loading'>Nenhum sinal no momento...</p>";
+      return;
+    }
+
+    box.innerHTML = "";
+
+    data.forEach(sig => {
+
+      const horarioEntrada = new Date(sig.minuto_entrada)
+        .toLocaleTimeString("pt-BR", {hour: "2-digit", minute: "2-digit"});
+
+      box.innerHTML += `
+        <div class="signal-card">
+
+          <span class="tag">${sig.tipo}</span>
+
+          <h3>${sig.ativo}</h3>
+
+          <p>Confluências: <strong>${sig.confluencias}/7</strong> —
+          <em>${sig.nivel}</em></p>
+
+          <p>Probabilidade: <strong>${sig.probabilidade}%</strong></p>
+
+          <p>Entrada: <strong>${horarioEntrada}</strong></p>
+
+          <button class="btn-${sig.tipo === 'PUT' ? 'put' : 'call'}">
+            ${sig.tipo}
+          </button>
+
+        </div>
+      `;
+    });
+
+  } catch (e) {
+
