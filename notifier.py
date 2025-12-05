@@ -1,61 +1,51 @@
-# notifier.py
-import os
 import requests
-import logging
+import os
 
-LOG = logging.getLogger("notifier")
-LOG.setLevel(logging.INFO)
+# Pegamos TOKEN e CHAT_ID das variáveis de ambiente (Render)
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-WEBHOOK_URL = os.getenv("NOTIFY_WEBHOOK_URL")
-PROB_THRESHOLD = float(os.getenv("NOTIFY_PROB_THRESHOLD", "70"))
+def send_telegram_message(ativo, tipo, minuto_entrada, confluencias, probabilidade):
+    """
+    Envia mensagem para o Telegram.
+    """
+    if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
+        print("⚠️ TOKEN ou CHAT_ID não configurado no Render.")
+        return
 
-def send_webhook(signal: dict):
-    if not WEBHOOK_URL:
-        return False
+    text = (
+        f"📊 *Sinal Detectado*\n\n"
+        f"Ativo: *{ativo}*\n"
+        f"Tipo: *{tipo}*\n"
+        f"Entrada: *{minuto_entrada}*\n"
+        f"Confluências: *{confluencias}/7*\n"
+        f"Nível: *{nivel_sinal(confluencias)}*\n"
+        f"Probabilidade: *{probabilidade}%*\n"
+    )
+
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+
+    data = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": text,
+        "parse_mode": "Markdown"
+    }
+
     try:
-        resp = requests.post(WEBHOOK_URL, json=signal, timeout=5)
-        LOG.info(f"Webhook sent {resp.status_code}")
-        return resp.ok
+        r = requests.post(url, json=data)
+        print("Telegram retorno:", r.text)
     except Exception as e:
-        LOG.exception("Webhook error")
-        return False
+        print("Erro enviando Telegram:", e)
 
-def send_telegram(signal: dict):
-    if not (TELEGRAM_TOKEN and TELEGRAM_CHAT_ID):
-        return False
-    try:
-        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-        text = build_message(signal)
-        resp = requests.post(url, json={"chat_id": TELEGRAM_CHAT_ID, "text": text, "parse_mode": "Markdown"}, timeout=5)
-        LOG.info(f"Telegram sent {resp.status_code}")
-        return resp.ok
-    except Exception as e:
-        LOG.exception("Telegram error")
-        return False
 
-def build_message(signal: dict) -> str:
-    lines = [
-        f"*SINAL* — {signal.get('tipo')} {signal.get('ativo')}",
-        f"Entrada: `{signal.get('minuto_entrada')}`",
-        f"Confluências: {signal.get('confluencias')}",
-        f"Probabilidade: {signal.get('probabilidade')}%",
-        f"Expiração: {signal.get('expiracao_sugerida_min')} min",
-        "",
-        "*Detalhes:*"
-    ]
-    detalhes = signal.get('detalhes', {})
-    for k,v in detalhes.items():
-        lines.append(f"- {k}: {v}")
-    return "\n".join(lines)
+def nivel_sinal(confluencias):
+    """Classifica o sinal."""
+    if confluencias < 3:
+        return "Fraco"
+    if 3 <= confluencias <= 4:
+        return "Moderado"
+    if 5 <= confluencias <= 6:
+        return "Forte"
+    if confluencias == 7:
+        return "Premium"
 
-def notify_if_needed(signal: dict):
-    prob = float(signal.get('probabilidade', 0))
-    result = {"webhook": None, "telegram": None, "skipped": False}
-    if prob < PROB_THRESHOLD:
-        result["skipped"] = True
-        return result
-    result["webhook"] = send_webhook(signal) if WEBHOOK_URL else None
-    result["telegram"] = send_telegram(signal) if (TELEGRAM_TOKEN and TELEGRAM_CHAT_ID) else None
-    return result
